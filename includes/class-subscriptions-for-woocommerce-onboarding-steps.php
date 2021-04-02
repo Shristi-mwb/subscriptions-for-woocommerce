@@ -108,6 +108,7 @@ class Subscriptions_For_Woocommerce_Onboarding_Steps {
 	 * @since    1.0.0
 	 */
 	public function __construct() {
+		//die('-->>>>subscription');
 		self::$mwb_sfw_store_name = get_bloginfo( 'name' );
 		self::$mwb_sfw_store_url = home_url();
 		self::$mwb_sfw_plugin_name = 'Subscriptions For WooCommerce';
@@ -551,7 +552,7 @@ class Subscriptions_For_Woocommerce_Onboarding_Steps {
 	 * @since    1.0.0
 	 */
 	public function mwb_sfw_send_onboarding_data() {
-
+		
 		check_ajax_referer( 'mwb_sfw_onboarding_nonce', 'nonce' );
 
 		$form_data = ! empty( $_POST['form_data'] ) ? json_decode( sanitize_text_field( wp_unslash( $_POST['form_data'] ) ) ) : '';
@@ -694,7 +695,7 @@ class Subscriptions_For_Woocommerce_Onboarding_Steps {
 		);
 
 		$response = $this->mwb_sfw_hic_post( $url, $form_data, $headers );
-
+		
 		if ( 200 == $response['status_code'] ) {
 			$result = json_decode( $response['response'], true );
 			$result['success'] = true;

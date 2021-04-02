@@ -382,5 +382,62 @@ if ( ! function_exists( 'mwb_sfw_get_page_screen' ) ) {
 	}
 }
 
+function mwb_sfw_check_subscription_product( $product ) {
+
+	$mwb_is_subscription = false;
+	if ( is_object( $product ) ) {
+		$product_id = $product->get_id();
+		$mwb_subscription_product = get_post_meta( $product_id, '_mwb_sfw_product', true );
+		if ( 'yes' === $mwb_subscription_product ) {
+			$mwb_is_subscription = true;
+		}
+	}
+
+	return $mwb_is_subscription;
+}
+
+function mwb_sfw_get_reccuring_time_interval_for_paypal( $mwb_reccuring_period ) {
+	$mwb_converted_period = 'D';
+	switch ( strtolower( $mwb_reccuring_period ) ) {
+		case 'day':
+			$mwb_converted_period = 'D';
+			break;
+		case 'week':
+			$mwb_converted_period = 'W';
+			break;
+		case 'month':
+			$mwb_converted_period = 'M';
+			break;
+		case 'year':
+		default:
+			$mwb_converted_period = 'Y';
+			break;
+	}
+
+	return $mwb_converted_period;
+}
+
+function mwb_sfw_get_subscription_interval_for_paypal( $start_time, $end_time, $billing_interval) {
+	if ( $end_time <= $start_time ) {
+		
+		$result = 0;
+		die('-->>>1');
+
+	}
+	elseif ( $billing_interval == 'month' ) {
+		/*for ( $periods_until = 0; $start_time < $end_time; $periods_until++ ) {
+				$mwb_next_date = mwb_sfw_get_timestamp( $start_time, 0, 1 );
+			}
+
+			print_r( $periods_until );
+			echo '<--->';
+			print_r( $mwb_next_date );*/
+			die('-->>helll');
+		
+	}
+
+	die('-->>>');
+}
+
 
 

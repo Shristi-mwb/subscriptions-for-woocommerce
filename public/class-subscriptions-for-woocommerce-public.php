@@ -489,8 +489,19 @@ class Subscriptions_For_Woocommerce_Public {
 										return $payment_result;
 								}
 							}
+							/*elseif ( isset( $_POST['payment_method'] ) && 'paypal' == $_POST['payment_method'] ) {
+								if ( class_exists( 'Subscriptions_For_Woocommerce_Paypal' ) ) {
+											$sfw_paypal_obj = new Subscriptions_For_Woocommerce_Paypal();
+									}
+							}*/
 							update_post_meta( $order_id, 'mwb_sfw_order_has_subscription', 'yes' );
 						}
+
+						/*if ( isset( $_POST['payment_method'] ) && 'paypal' == $_POST['payment_method'] ) {
+								if ( class_exists( 'Subscriptions_For_Woocommerce_Paypal' ) ) {
+											$sfw_paypal_obj = new Subscriptions_For_Woocommerce_Paypal();
+									}
+							}*/
 					}
 				}
 			}
@@ -596,13 +607,14 @@ class Subscriptions_For_Woocommerce_Public {
 			if ( is_wp_error( $subscription_id ) ) {
 				return $subscription_id;
 			}
+			update_post_meta( $order_id, 'mwb_susbcription_id', $subscription_id );
 			update_post_meta( $subscription_id, 'mwb_susbcription_trial_end', '' );
 			update_post_meta( $subscription_id, 'mwb_susbcription_end', '' );
 			update_post_meta( $subscription_id, 'mwb_next_payment_date', '' );
 			update_post_meta( $subscription_id, '_order_key', wc_generate_order_key() );
 
 			/*if free trial*/
-			if ( isset( $mwb_args['mwb_sfw_subscription_free_trial_number'] ) && ! empty( $mwb_args['mwb_sfw_subscription_free_trial_number'] ) ) {
+			//if ( isset( $mwb_args['mwb_sfw_subscription_free_trial_number'] ) && ! empty( $mwb_args['mwb_sfw_subscription_free_trial_number'] ) ) {
 
 				$new_order = new WC_Order( $subscription_id );
 
@@ -621,7 +633,9 @@ class Subscriptions_For_Woocommerce_Public {
 				$new_order->update_taxes();
 				$new_order->calculate_totals();
 				$new_order->save();
-			}
+				/*print_r($new_order);
+				die('-->>');*/
+			//}
 			mwb_sfw_update_meta_key_for_susbcription( $subscription_id, $mwb_args );
 
 			return $subscription_id;
@@ -1057,105 +1071,6 @@ class Subscriptions_For_Woocommerce_Public {
 		return $return;
 	}
 
-	public function mwb_sfw_add_paypal_args( $args ) {
-		/*print_r($args);
-			echo "<-->";
-			die('-->>');*/
-			$order_info = $this->mwb_get_order_info( $args );
-			/*print_r($order_info);
-			echo "<-->";
-			die();*/
-			if ( empty( $order_info ) || ! isset( $order_info['order_id'] ) ) {
-				//return $args;
-			}
-
-			$order = wc_get_order( $order_info['order_id'] );
-			
-			// check if order has subscriptions
-			$order_items = $order->get_items();
-
-			if ( empty( $order_items ) ) {
-				return $args;
-			}
-
-			$item_names       = array();
-			$has_subscription = false;
-
-			foreach ( $order_items as $key => $order_item ) {
-
-				$product_id = ( $order_item['variation_id'] ) ? $order_item['variation_id'] : $order_item['product_id'];
-				$product    = wc_get_product( $product_id );
-
-				
-					$has_subscription = true;
-					$args['cmd']      = '_xclick-subscriptions';
-
-					// 1 for reattempt failed recurring payments before canceling, use 0 for not
-					$args['sra'] = apply_filters( 'ywsbs_reattempt_failed_recurring_payments', 1 );
-
-					$subscription_info = wc_get_order_item_meta( $key, '_subscription_info', true );
-
-					$price_time_option= 'D';
-					$price_is_per = 1;
-
-					// order total
-					/*print_r($subscription_info);
-					die('-->>');*/
-					/*if ( $subscription_info['order_total'] != $order->get_total() ) {
-						$args['a1'] = wc_format_decimal( $order->get_total(), 2 );
-						$args['p1'] = $price_is_per;
-						$args['t1'] = $price_time_option;
-					}*/
-
-					$subscription_num = ( $max_length ) ? $max_length / $price_is_per : '';
-
-					$args['a3'] = wc_format_decimal( $order->get_total(), 2 );
-					$args['p3'] = $price_is_per;
-					$args['t3'] = $price_time_option;
-
-					if ( $subscription_num == '' || $subscription_num > 1 ) {
-						$args['src'] = 1;
-						if ( $subscription_num != '' ) {
-							$args['srt'] = $subscription_num;
-						}
-					} else {
-						$args['src'] = 0;
-					}
-				
-
-				if ( $order_item['qty'] > 1 ) {
-					$item_names[] = $order_item['qty'] . ' x ' . $this->mwb_format_item_name( $order_item['name'] );
-				} else {
-					$item_names[] = $this->mwb_format_item_name( $order_item['name'] );
-				}
-			}
-
-			if ( ! $has_subscription ) {
-				return $args;
-			}
-
-			if ( count( $item_names ) > 1 ) {
-				$args['item_name'] = $this->mwb_format_item_name( sprintf( __( 'Order %s', 'test' ), $order->get_order_number() . ' - ' . implode( ', ', $item_names ) ) );
-			} else {
-				$args['item_name'] = implode( ', ', $item_names );
-			}
-
-			$args['rm'] = 2;
-			if ( $this->debug ) {
-				$this->wclog->add( 'paypal', 'MWB - Subscription Request: ' . print_r( $args, true ) );
-			}
-
-			return $args;
-		}
-
-		public function mwb_get_order_info( $args ) {
-			return isset( $args['custom'] ) ? json_decode( $args['custom'], true ) : false;
-		}
-		public function mwb_format_item_name( $item_name ) {
-			if ( strlen( $item_name ) > 127 ) {
-				$item_name = substr( $item_name, 0, 124 ) . '...';
-			}
-			return html_entity_decode( $item_name, ENT_NOQUOTES, 'UTF-8' );
-		}
+	
 
 }

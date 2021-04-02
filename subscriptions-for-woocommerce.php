@@ -148,7 +148,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	 * @param   Array $links    Settings link array.
 	 */
 	function subscriptions_for_woocommerce_settings_link( $links ) {
-
+		//$links['deactivate'] .= '<a href="#" class="mwb_sfw_deactivate_slug"></a>';
 		$my_link = array(
 			'<a href="' . admin_url( 'admin.php?page=subscriptions_for_woocommerce_menu' ) . '">' . __( 'Settings', 'subscriptions-for-woocommerce' ) . '</a>',
 		);

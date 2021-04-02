@@ -13,8 +13,9 @@ jQuery(document).ready(function($) {
         return new MDCSwitch(el);
     });
 
-    const dialog = mdc.dialog.MDCDialog.attachTo(document.querySelector('.mdc-dialog'));
-
+   // const dialog = mdc.dialog.MDCDialog.attachTo(document.querySelector('.mdc-dialog'));
+    const dialog = mdc.dialog.MDCDialog.attachTo(document.querySelector('.mwb-sfw-on-boarding-test'));
+    console.log(dialog);
     /*if device is mobile*/
     if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
         jQuery('body').addClass('mobile-device');
@@ -31,7 +32,7 @@ jQuery(document).ready(function($) {
     if ('plugins.php' == mwb_sfw_onboarding.sfw_current_screen) {
 
         // Add Deactivation id to all deactivation links.
-        mwb_sfw_embed_id_to_deactivation_urls();
+        //mwb_sfw_embed_id_to_deactivation_urls();
         mwb_sfw_add_deactivate_slugs_callback(mwb_sfw_onboarding.sfw_current_supported_slug);
 
         jQuery(document).on('change', '.sfw-on-boarding-radio-field', function(e) {
@@ -83,8 +84,8 @@ jQuery(document).ready(function($) {
 
     /* Submitting Form */
     jQuery(document).on('submit', 'form.mwb-sfw-on-boarding-form', function(e) {
-
         e.preventDefault();
+       
         var form_data = JSON.stringify(jQuery('form.mwb-sfw-on-boarding-form').serializeArray());
 
         jQuery.ajax({
@@ -97,8 +98,9 @@ jQuery(document).ready(function($) {
                 form_data: form_data,
             },
             success: function(msg) {
+                console.log(msg);
                 if ('plugins.php' == mwb_sfw_onboarding.sfw_current_screen) {
-                    window.location.replace(deactivate_url);
+                   window.location.replace(deactivate_url);
                 }
                 mwb_sfw_hide_onboard_popup();
             }
@@ -107,6 +109,8 @@ jQuery(document).ready(function($) {
 
     /* Open Popup */
     function mwb_sfw_show_onboard_popup() {
+        //console.log(dialog);
+        //console.log('hell');
         dialog.open();
         if (!jQuery('body').hasClass('mobile-device')) {
             jQuery('body').addClass('mwb-on-boarding-wrapper-control');
@@ -125,13 +129,15 @@ jQuery(document).ready(function($) {
 
     /* Apply deactivate in all the MWB plugins. */
     function mwb_sfw_add_deactivate_slugs_callback(all_slugs) {
+        console.log(all_slugs);
 
-        for (var i = all_slugs.length - 1; i >= 0; i--) {
-
-            jQuery(document).on('click', '#deactivate-' + all_slugs[i], function(e) {
-
+       for (var i = all_slugs.length - 1; i >= 0; i--) {
+          
+            jQuery(document).on('click', '#deactivate-subscriptions-for-woocommerce', function(e) {
+                console.log( jQuery(this) );
                 e.preventDefault();
                 deactivate_url = jQuery(this).attr('href');
+                console.log(deactivate_url);
                 plugin_name = jQuery(this).attr('aria-label');
                 plugin_name = plugin_name.replace('Deactivate ', '');
                 jQuery('#plugin-name').val(plugin_name);
@@ -140,7 +146,7 @@ jQuery(document).ready(function($) {
                 jQuery('#mwb-sfw-deactivation-reason-text').attr('placeholder', placeholder.replace('{plugin-name}', plugin_name));
                 mwb_sfw_show_onboard_popup();
             });
-        }
+       }
     }
 
     /* Add deactivate id in all the plugins links. */

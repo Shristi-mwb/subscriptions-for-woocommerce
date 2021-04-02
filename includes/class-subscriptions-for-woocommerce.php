@@ -153,6 +153,12 @@ class Subscriptions_For_Woocommerce {
 
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'package/gateways/stripe/class-subscriptions-for-woocommerce-stripe.php';
 
+		/*for paypal*/
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'package/gateways/paypal/class-subscriptions-for-woocommerce-paypal.php';
+		if ( class_exists( 'Subscriptions_For_Woocommerce_Paypal' ) ) {
+				$sfw_paypal_obj = new Subscriptions_For_Woocommerce_Paypal();
+		}
+		
 		$this->loader = new Subscriptions_For_Woocommerce_Loader();
 
 	}
@@ -282,8 +288,6 @@ class Subscriptions_For_Woocommerce {
 
 			$this->loader->add_filter( 'woocommerce_order_get_total', $sfw_plugin_public, 'mwb_sfw_set_susbcription_total', 11, 2 );
 			$this->loader->add_filter( 'woocommerce_is_sold_individually', $sfw_plugin_public, 'mwb_sfw_hide_quantity_fields_for_subscription', 10, 2 );
-			
-			$this->loader->add_filter( 'woocommerce_paypal_args', $sfw_plugin_public, 'mwb_sfw_add_paypal_args' );
 
 			
 

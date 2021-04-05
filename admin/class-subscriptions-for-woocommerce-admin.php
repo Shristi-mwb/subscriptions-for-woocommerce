@@ -131,6 +131,14 @@ class Subscriptions_For_Woocommerce_Admin {
 				'month' => __( 'Months', 'subscriptions-for-woocommerce' ),
 				'year' => __( 'Years', 'subscriptions-for-woocommerce' ),
 				'expiry_notice' => __( 'Expiry Interval must be greater than subscription interval', 'subscriptions-for-woocommerce' ),
+				'expiry_days_notice' => __( 'Expiry Interval must not be greater than 90 Days', 'subscriptions-for-woocommerce' ),
+				'expiry_week_notice' => __( 'Expiry Interval must not be greater than 52 Weeks', 'subscriptions-for-woocommerce' ),
+				'expiry_month_notice' => __( 'Expiry Interval must not be greater than 24 Months', 'subscriptions-for-woocommerce' ),
+				'expiry_year_notice' => __( 'Expiry Interval must not be greater than 5 Years', 'subscriptions-for-woocommerce' ),
+				'trial_days_notice' => __( 'Trial period must not be greater than 90 Days', 'subscriptions-for-woocommerce' ),
+				'trial_week_notice' => __( 'Trial period must not be greater than 52 Weeks', 'subscriptions-for-woocommerce' ),
+				'trial_month_notice' => __( 'Trial period must not be greater than 24 Months', 'subscriptions-for-woocommerce' ),
+				'trial_year_notice' => __( 'Trial period must not be greater than 5 Years', 'subscriptions-for-woocommerce' ),
 			);
 			wp_localize_script(
 				'mwb-sfw-admin-single-product-js',
@@ -510,11 +518,21 @@ class Subscriptions_For_Woocommerce_Admin {
 			'month' => __( 'Months', 'subscriptions-for-woocommerce' ),
 			'year' => __( 'Years', 'subscriptions-for-woocommerce' ),
 		);
-		if ( 'week' == $mwb_sfw_subscription_interval ) {
+		if ('day' == $mwb_sfw_subscription_interval ) {
+			unset( $subscription_interval['week'] );
+			unset( $subscription_interval['month'] );
+			unset( $subscription_interval['year'] );
+		}
+		elseif ( 'week' == $mwb_sfw_subscription_interval ) {
 			unset( $subscription_interval['day'] );
+			unset( $subscription_interval['month'] );
+			unset( $subscription_interval['year'] );
+
 		} elseif ( 'month' == $mwb_sfw_subscription_interval ) {
 			unset( $subscription_interval['day'] );
 			unset( $subscription_interval['week'] );
+			unset( $subscription_interval['year'] );
+
 		} elseif ( 'year' == $mwb_sfw_subscription_interval ) {
 			unset( $subscription_interval['day'] );
 			unset( $subscription_interval['week'] );
@@ -665,6 +683,7 @@ class Subscriptions_For_Woocommerce_Admin {
 					update_post_meta( $order_id, 'mwb_sfw_renewal_order', 'yes' );
 					update_post_meta( $order_id, 'mwb_sfw_subscription', $susbcription_id );
 					update_post_meta( $order_id, 'mwb_sfw_parent_order_id', $parent_order_id );
+					update_post_meta( $susbcription_id, 'mwb_renewal_subcription_order', $order_id );
 
 					/*if trial period enable*/
 					if ( '' == $mwb_old_payment_method ) {

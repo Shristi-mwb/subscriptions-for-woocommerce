@@ -153,6 +153,13 @@ class Subscriptions_For_Woocommerce {
 
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'package/gateways/stripe/class-subscriptions-for-woocommerce-stripe.php';
 
+		/*for paypal*/
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'package/gateways/paypal/class-subscriptions-for-woocommerce-paypal.php';
+
+		if ( class_exists( 'Subscriptions_For_Woocommerce_Paypal' ) ) {
+			$sfw_paypal_obj = new Subscriptions_For_Woocommerce_Paypal();
+		}
+
 		$this->loader = new Subscriptions_For_Woocommerce_Loader();
 
 	}

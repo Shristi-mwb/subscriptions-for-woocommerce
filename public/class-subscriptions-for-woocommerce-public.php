@@ -596,32 +596,31 @@ class Subscriptions_For_Woocommerce_Public {
 			if ( is_wp_error( $subscription_id ) ) {
 				return $subscription_id;
 			}
+			update_post_meta( $order_id, 'mwb_susbcription_id', $subscription_id );
 			update_post_meta( $subscription_id, 'mwb_susbcription_trial_end', '' );
 			update_post_meta( $subscription_id, 'mwb_susbcription_end', '' );
 			update_post_meta( $subscription_id, 'mwb_next_payment_date', '' );
 			update_post_meta( $subscription_id, '_order_key', wc_generate_order_key() );
 
 			/*if free trial*/
-			if ( isset( $mwb_args['mwb_sfw_subscription_free_trial_number'] ) && ! empty( $mwb_args['mwb_sfw_subscription_free_trial_number'] ) ) {
+			$new_order = new WC_Order( $subscription_id );
 
-				$new_order = new WC_Order( $subscription_id );
+			$billing_details = $order->get_address( 'billing' );
+			$shipping_details = $order->get_address( 'shipping' );
 
-				$billing_details = $order->get_address( 'billing' );
-				$shipping_details = $order->get_address( 'shipping' );
+			$new_order->set_address( $billing_details, 'billing' );
+			$new_order->set_address( $shipping_details, 'shipping' );
 
-				$new_order->set_address( $billing_details, 'billing' );
-				$new_order->set_address( $shipping_details, 'shipping' );
+			$_product = wc_get_product( $mwb_args['product_id'] );
 
-				$_product = wc_get_product( $mwb_args['product_id'] );
-
-				$item_id = $new_order->add_product(
-					$_product,
-					$mwb_args['product_qty']
-				);
-				$new_order->update_taxes();
-				$new_order->calculate_totals();
-				$new_order->save();
-			}
+			$item_id = $new_order->add_product(
+				$_product,
+				$mwb_args['product_qty']
+			);
+			$new_order->update_taxes();
+			$new_order->calculate_totals();
+			$new_order->save();
+			
 			mwb_sfw_update_meta_key_for_susbcription( $subscription_id, $mwb_args );
 
 			return $subscription_id;

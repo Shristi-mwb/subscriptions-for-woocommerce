@@ -119,6 +119,8 @@ class Subscriptions_For_Woocommerce_Paypal {
 			add_filter( 'woocommerce_paypal_args', array( $this, 'mwb_sfw_add_paypal_args' ),10,2 );
 			
 			add_action( 'valid-paypal-standard-ipn-request', array( $this, 'mwb_sfw_validate_process_ipn_request' ),0 );
+			add_filter( 'mwb_sfw_paypal_subscription_cancel', array( $this, 'mwb_sfw_cancel_paypal_subscription' ),10,3 );
+
 		}
 
 	}
@@ -219,17 +221,6 @@ class Subscriptions_For_Woocommerce_Paypal {
 
 		$this->mwb_sfw_receiver_email  = ( isset( $mwb_paypal_settings['receiver_email'] ) ) ? $mwb_paypal_settings['receiver_email'] : $this->mwb_sfw_email;
 
-
-
-		/*if ( $this->mwb_debug ) {
-
-			if ( class_exists( 'WC_Logger') ) {
-				
-				$this->mwb_wclog = new WC_Logger();
-			}
-
-		}*/
-
 		return $mwb_paypal_enable;
 
 	}
@@ -252,6 +243,10 @@ class Subscriptions_For_Woocommerce_Paypal {
 
 				if ( '' != $mwb_paypal_settings['sandbox_api_username'] && '' != $mwb_paypal_settings['sandbox_api_password'] && '' != $mwb_paypal_settings['sandbox_api_signature'] ) {
 
+					 $this->mwb_sfw_api_username = $mwb_paypal_settings['sandbox_api_username'];
+					 $this->mwb_sfw_api_password = $mwb_paypal_settings['sandbox_api_password'];
+					 $this->mwb_sfw_api_signature = $mwb_paypal_settings['sandbox_api_signature']; 
+					 $this->mwb_sfw_api_endpoint = 'https://api-3t.sandbox.paypal.com/nvp';
 					$mwb_credential_set = true; 
 
 				}
@@ -262,6 +257,11 @@ class Subscriptions_For_Woocommerce_Paypal {
 
 				if ( '' != $mwb_paypal_settings['api_username'] && '' != $mwb_paypal_settings['api_password'] && '' != $mwb_paypal_settings['api_signature'] ) {
 
+					$this->mwb_sfw_api_username = $mwb_paypal_settings['api_username'];
+					$this->mwb_sfw_api_password = $mwb_paypal_settings['api_password'];
+					$this->mwb_sfw_api_signature = $mwb_paypal_settings['api_signature'];
+					$this->mwb_sfw_api_endpoint = 'https://api-3t.paypal.com/nvp';
+
 					$mwb_credential_set = true; 
 
 				}
@@ -271,16 +271,7 @@ class Subscriptions_For_Woocommerce_Paypal {
 		}
 
 		return $mwb_credential_set;
-
-		
-
 	}
-
-
-
-
-
-
 
 	public function mwb_sfw_add_paypal_args( $mwb_args, $order ) {
 		
@@ -305,7 +296,7 @@ class Subscriptions_For_Woocommerce_Paypal {
 			return $mwb_args;
 		}
 
-		$mwb_susbcription_id = get_post_meta( $order_id ,'mwb_susbcription_id', true );
+		$mwb_susbcription_id = get_post_meta( $order_id ,'mwb_subscription_id', true );
 
 		if ( empty( $mwb_susbcription_id ) ) {
 
@@ -463,4 +454,62 @@ class Subscriptions_For_Woocommerce_Paypal {
 
 	}
 
+
+	public function mwb_sfw_change_paypal_subscription_status( $profile_id, $action ) {
+ 		
+	    $mwb_sfw_api_request = 'USER=' . urlencode( $this->mwb_sfw_api_username )
+	                .  '&PWD=' . urlencode( $this->mwb_sfw_api_password )
+	                .  '&SIGNATURE=' . urlencode( $this->mwb_sfw_api_signature )
+	                .  '&VERSION=76.0'
+	                .  '&METHOD=ManageRecurringPaymentsProfileStatus'
+	                .  '&PROFILEID=' . urlencode( $profile_id )
+	                .  '&ACTION=' . urlencode( $action )
+	                .  '&NOTE=' . urlencode( sprintf( __( 'MWB Subscription %s', 'subscriptions-for-woocommerce' ), strtolower( $action ) ) );
+
+
+	 	$url = $this->mwb_sfw_api_endpoint;
+		$request = array(
+			'httpversion' => '1.0',
+			'sslverify'   => false,
+			'method'      => 'POST',
+			'timeout'     => 45,
+			'body'        => $mwb_sfw_api_request,
+		);
+
+		$response = wp_remote_post( $url, $request );
+
+		if ( is_wp_error( $response ) ) {
+		    $error_message = $response->get_error_message();
+		    echo "Something went wrong: $error_message";
+		    WC_Gateway_Paypal::log( 'MWB - Change Paypal status for '. $profile_id.' has been Failed: ' . $error_message );
+		} else {
+			$response    = wp_remote_retrieve_body( $response );
+		    WC_Gateway_Paypal::log( 'MWB - Change Paypal status for '. $profile_id.' has been successfull: ' . print_r( $response, true ) );
+		    parse_str( $response, $parsed_response );
+			return $parsed_response;
+		}
+		
+	    return $response;
+
+	}
+	public function mwb_sfw_cancel_paypal_subscription( $return, $mwb_subscription_id, $status ) {
+		$mwb_sfw_paypal_subscriber_id = get_post_meta( $mwb_subscription_id, 'mwb_sfw_paypal_subscriber_id', true );
+		if ( ! isset( $mwb_sfw_paypal_subscriber_id ) || empty( $mwb_sfw_paypal_subscriber_id ) ) {
+			return $return;
+		}
+		$response = $this->mwb_sfw_change_paypal_subscription_status( $mwb_sfw_paypal_subscriber_id,$status );
+		
+		if ( ! empty( $response ) ) {
+			if ( $response['ACK'] == 'Failure' ) {
+				
+				 WC_Gateway_Paypal::log( 'MWB - Change Paypal status for '. $mwb_sfw_paypal_subscriber_id.' has been Failed: ' . $response['L_LONGMESSAGE0'] );
+
+				return $response['L_LONGMESSAGE0'];
+			} else {
+				return true;
+			}
+		}
+	}
+
 }
+

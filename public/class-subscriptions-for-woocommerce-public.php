@@ -596,7 +596,7 @@ class Subscriptions_For_Woocommerce_Public {
 			if ( is_wp_error( $subscription_id ) ) {
 				return $subscription_id;
 			}
-			update_post_meta( $order_id, 'mwb_susbcription_id', $subscription_id );
+			update_post_meta( $order_id, 'mwb_subscription_id', $subscription_id );
 			update_post_meta( $subscription_id, 'mwb_susbcription_trial_end', '' );
 			update_post_meta( $subscription_id, 'mwb_susbcription_end', '' );
 			update_post_meta( $subscription_id, 'mwb_next_payment_date', '' );
@@ -966,13 +966,19 @@ class Subscriptions_For_Woocommerce_Public {
 	 * @since 1.0.0
 	 */
 	public function mwb_sfw_cancel_susbcription_order_by_customer( $mwb_subscription_id, $mwb_status, $user_id ) {
-
 		$mwb_customer_id = get_post_meta( $mwb_subscription_id, 'mwb_customer_id', true );
 		if ( 'active' == $mwb_status && $mwb_customer_id == $user_id ) {
 
+			$redirect_url = wc_get_endpoint_url( 'show-subscription', $mwb_subscription_id, wc_get_page_permalink( 'myaccount' ) );
+			$payment_method = get_post_meta( $mwb_subscription_id,'_payment_method',true );
+			if ( $payment_method == 'paypal' ) {
+				if ( ! apply_filters( 'mwb_sfw_paypal_subscription_cancel', false, $mwb_subscription_id,'Cancel' ) ) {
+					wp_safe_redirect( $redirect_url );
+					exit;
+				}
+			}
 			update_post_meta( $mwb_subscription_id, 'mwb_subscription_status', 'cancelled' );
 			mwb_sfw_send_email_for_cancel_susbcription( $mwb_subscription_id );
-			$redirect_url = wc_get_endpoint_url( 'show-subscription', $mwb_subscription_id, wc_get_page_permalink( 'myaccount' ) );
 			wp_safe_redirect( $redirect_url );
 			exit;
 		}

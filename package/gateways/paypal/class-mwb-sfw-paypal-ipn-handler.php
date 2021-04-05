@@ -114,12 +114,12 @@ if ( ! class_exists( 'MWB_Sfw_PayPal_IPN_Handler' ) ) {
 			}
 			$order_id = $order->get_id();
 			// check if the transaction has been processed
-			$mwb_order_transaction_id = get_post_meta( $order_id, '_paypal_transaction_ids', true );
+			$mwb_order_transaction_id = get_post_meta( $order_id, '_mwb_paypal_transaction_ids', true );
 			$mwb_order_transactions   = $this->mwb_sfw_validate_transaction( $mwb_order_transaction_id, $mwb_transaction_details );
 			update_option('test_transaction',$mwb_order_transactions );
 			
 			if ( $mwb_order_transactions ) {
-				update_post_meta( $order_id, '_paypal_transaction_ids', $order_transactions );
+				update_post_meta( $order_id, '_mwb_paypal_transaction_ids', $order_transactions );
 			} else {
 				WC_Gateway_Paypal::log( 'MWB - Transaction ID already processed' );
 				return;
@@ -132,21 +132,21 @@ if ( ! class_exists( 'MWB_Sfw_PayPal_IPN_Handler' ) ) {
 				return;
 			}
 
-			$mwb_susbcription_id = get_post_meta( $order_id ,'mwb_susbcription_id', true );
+			$mwb_subscription_id = get_post_meta( $order_id ,'mwb_subscription_id', true );
 
-			if ( empty( $mwb_susbcription_id ) ) {
+			if ( empty( $mwb_subscription_id ) ) {
 
 				WC_Gateway_Paypal::log( 'MWB - IPN subscription payment error - ' . $order_id . ' haven\'t subscriptions' );
 				return;
 
 			}
 			/*check for valid subscription*/
-			if ( ! mwb_sfw_check_valid_subscription( $mwb_susbcription_id ) ) {
+			if ( ! mwb_sfw_check_valid_subscription( $mwb_subscription_id ) ) {
 				WC_Gateway_Paypal::log( 'MWB - IPN subscription payment error - ' . $order_id . ' haven\'t valid subscriptions' );
 				return;
 			}
 
-			$subscription = wc_get_order( $mwb_susbcription_id );
+			$subscription = wc_get_order( $mwb_subscription_id );
 
 			switch ( $mwb_transaction_details['txn_type'] ) {
 				case 'subscr_signup':
@@ -168,7 +168,7 @@ if ( ! class_exists( 'MWB_Sfw_PayPal_IPN_Handler' ) ) {
 									'mwb_sfw_paypal_subscriber_id' 		   => $mwb_transaction_details['subscr_id']
 									
 								);
-					$this->mwb_sfw_save_post_data( $mwb_susbcription_id, $args );
+					$this->mwb_sfw_save_post_data( $mwb_subscription_id, $args );
 
 					break;
 				case 'subscr_payment':
@@ -176,10 +176,10 @@ if ( ! class_exists( 'MWB_Sfw_PayPal_IPN_Handler' ) ) {
 					WC_Gateway_Paypal::log( 'MWB - Transaction log for subscr_payment:'.print_r( $mwb_transaction_details, true ) );
 					if ( 'completed' == strtolower( $mwb_transaction_details['payment_status'] ) ) {
 
-						$mwb_order_transactions = get_post_meta( $mwb_susbcription_id, '_paypal_transaction_ids', true );
+						$mwb_order_transactions = get_post_meta( $mwb_subscription_id, '_mwb_paypal_transaction_ids', true );
 						$mwb_order_transactions    = $this->mwb_sfw_validate_transaction( $mwb_order_transactions, $mwb_transaction_details );
 						if ( $mwb_order_transactions ) {
-							update_post_meta( $mwb_susbcription_id, '_paypal_transaction_ids', $mwb_order_transactions );
+							update_post_meta( $mwb_subscription_id, '_mwb_paypal_transaction_ids', $mwb_order_transactions );
 						} else {
 							WC_Gateway_Paypal::log( 'MWB - Transaction ID Error' );
 							return;
@@ -237,7 +237,7 @@ if ( ! class_exists( 'MWB_Sfw_PayPal_IPN_Handler' ) ) {
 
 							} else {
 								
-								$mwb_renewal_order = mwb_sfw_create_renewal_order_for_paypal( $mwb_susbcription_id );
+								$mwb_renewal_order = mwb_sfw_create_renewal_order_for_paypal( $mwb_subscription_id );
 
 								if ( ! $mwb_renewal_order ) {
 									WC_Gateway_Paypal::log( 'MWB - Renewal Order Creation failed' );
@@ -268,15 +268,70 @@ if ( ! class_exists( 'MWB_Sfw_PayPal_IPN_Handler' ) ) {
 									'mwb_sfw_paypal_subscriber_id' 		   => $mwb_sub_id
 									
 								);
-							$this->mwb_sfw_save_post_data( $mwb_susbcription_id, $args );
+							$this->mwb_sfw_save_post_data( $mwb_subscription_id, $args );
 							
 							WC_Gateway_Paypal::log( 'MWB - Subscription successfull' );
 					}
 
 					break;
+				case 'subscr_cancel':
+					$mwb_subscriber_id = mwb_sfw_get_paypal_susbcriber_id( $mwb_subscription_id );
+					if ( $mwb_subscriber_id != $mwb_transaction_details['subscr_id'] ) {
+						WC_Gateway_Paypal::log( 'IPN subscription cancellation request ignored ' . $mwb_subscription_id );
+					} else {
+						update_post_meta( $mwb_subscription_id, 'mwb_subscription_status', 'cancelled' );
+						$order->add_order_note( __( 'MWB-IPN subscription cancelled for this order.', 'subscriptions-for-woocommerce' ) );
+						WC_Gateway_Paypal::log( 'IPN subscription cancelled for subscription ' . $mwb_subscription_id );
+
+					}
+					break;
+				case 'subscr_eot': // Subscription ended,
+					WC_Gateway_Paypal::log( 'MWB-IPN EOT request ignored for subscription ' . $mwb_subscription_id );
+					break;
+				case 'subscr_failed': // Subscription sign up failed
+				case 'recurring_payment_suspended_due_to_max_failed_payment':
+
+					$mwb_subscriber_id = mwb_sfw_get_paypal_susbcriber_id( $mwb_subscription_id );
+					if ( $mwb_subscriber_id != $mwb_transaction_details['subscr_id'] ) {
+						WC_Gateway_Paypal::log( 'IPN subscription cancellation request ignored ' . $mwb_subscription_id );
+					}
+					else{
+
+						$mwb_order_transactions = get_post_meta( $mwb_subscription_id, '_mwb_paypal_transaction_ids', true );
+						$mwb_order_transactions    = $this->mwb_sfw_validate_transaction( $mwb_order_transactions, $mwb_transaction_details );
+						if ( $mwb_order_transactions ) {
+							update_post_meta( $mwb_subscription_id, '_mwb_paypal_transaction_ids', $mwb_order_transactions );
+						} else {
+							WC_Gateway_Paypal::log( 'MWB - Transaction ID Error' );
+							return;
+						}
+
+						$mwb_pending_order    = false;
+						$mwb_renewal_order = $subscription->mwb_renewal_subcription_order;
+						WC_Gateway_Paypal::log( 'MWB - Renewal Order ID:'. $mwb_renewal_order );
+						if ( intval( $mwb_renewal_order ) ) {
+							$mwb_pending_order = wc_get_order( $mwb_renewal_order );
+						}
+						if ( $mwb_pending_order ) {
+								
+							$mwb_pending_order->add_order_note( sprintf( __( 'MWB - IPN Failed payment for  %$ ', 'subscriptions-for-woocommerce' ), $mwb_subscription_id ) );
+
+						} else {
+							$mwb_renewal_order = mwb_sfw_create_renewal_order_for_paypal( $mwb_subscription_id );
+							if ( ! $mwb_renewal_order ) {
+								WC_Gateway_Paypal::log( 'MWB - Renewal Order Creation failed' );
+								return;
+							}
+							$mwb_renewal_order->add_order_note( sprintf( __( 'MWB - IPN Failed payment for  %$ ', 'subscriptions-for-woocommerce' ), $mwb_subscription_id ) );
+						}
+						$subscription->add_order_note( __( 'MWB - IPN Failed payment', 'subscriptions-for-woocommerce' ) );
+						WC_Gateway_Paypal::log( 'MWB - IPN Failed payment:'. $subscription );
+
+					break;
 			}
 
 		}
+	}
 
 		private function mwb_sfw_validate_transaction( $mwb_transaction_ids, $mwb_transaction_details ) {
 
